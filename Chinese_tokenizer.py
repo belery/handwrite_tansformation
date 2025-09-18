@@ -1,4 +1,4 @@
-from position_encoding import TokenEmbedding
+from position_encoding import transformer_embeding
 from tokenizer import JiebaTokenizer
 import torch
 
@@ -15,7 +15,7 @@ class ChineseTransformer:
         self.d_model = d_model
         self.max_len = max_len
         self.dropout = dropout
-        self.TokenEmbedding = TokenEmbedding(vocab_size, d_model)
+        self.TokenEmbedding = transformer_embeding(vocab_size, d_model, max_len, 'cpu', dropout)
         # 其他组件...
     
     def train_tokenizer(self, texts):
@@ -32,7 +32,7 @@ class ChineseTransformer:
     def forward(self, texts):
         """前向传播"""
         input_ids = self.preprocess(texts)
-        embedded = self.TokenEmbedding(input_ids)
+        embedded = self.TokenEmbedding.forward(input_ids)
         output = embedded
         # 继续处理...
         return output
