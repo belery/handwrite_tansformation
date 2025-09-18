@@ -38,7 +38,6 @@ class mutihead_attention(nn.Module):
         Returns:
             经过多头注意力计算后的输出向量
         """
-        print(query.shape)
         batch_size = query.shape[0]
 
         # 对输入进行线性变换
@@ -52,17 +51,14 @@ class mutihead_attention(nn.Module):
         q = q.view(batch_size, self.num_heads,-1, self.head_dim).transpose(1,2)
         k = k.view(batch_size, self.num_heads,-1, self.head_dim).transpose(1,2)
         v = v.view(batch_size, self.num_heads,-1, self.head_dim).transpose(1,2)
-        print(q.shape)
         
         # 计算注意力分数并进行缩放
         attention_scores =q@k.transpose(-2,-1)/math.sqrt(self.head_dim)
         # 应用softmax获取注意力权重
         attention_weights = self.softmax(attention_scores)
-        print(attention_weights.shape)
         
         # 使用注意力权重对值向量进行加权求和
         attention_value = torch.matmul(attention_weights,v)
-        print(attention_value.shape)
         
         # 将多头结果重新组合为原始维度
         attention_value = attention_value.transpose(1,2).contiguous().view(batch_size, -1, self.d_model)
