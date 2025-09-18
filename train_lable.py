@@ -7,7 +7,7 @@ from Chinese_tokenizer import ChineseTransformer
 
 class transformer(nn.Module):
     def __init__(self, d_model=512, n_head=8, num_encoder_layers=6, num_decoder_layers=6,
-                 dim_feedforward=2048, dropout=0.1, max_len=3000, device='cpu', vocab_size=10000):
+                 dim_feedforward=2048, dropout=0.1, max_len=100, device='cpu', vocab_size=10000):
         super(transformer, self).__init__()
         self.d_model = d_model
         self.n_head = n_head  

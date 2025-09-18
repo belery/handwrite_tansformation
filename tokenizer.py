@@ -39,6 +39,7 @@ class JiebaTokenizer:
     
     def encode(self, text, use_hmm=True):
         """将中文文本转换为token ID序列"""
+
         if use_hmm:
             tokens = jieba.cut(text, HMM=use_hmm)
         else:
@@ -49,3 +50,4 @@ class JiebaTokenizer:
         """将token ID序列转换回中文文本"""
         tokens = [self.inverse_vocab.get(token_id, '<unk>') for token_id in token_ids]
         return ''.join(tokens)  # 中文不需要空格分隔
+    

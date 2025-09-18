@@ -10,8 +10,10 @@ class decoder_layer(nn.Module):
         self.d_model = d_model
         self.num_heads = num_heads
         self.dropout = nn.Dropout(dropout)
-        self.attention = mutihead_attention(d_model, num_heads)
+        self.self_attention = mutihead_attention(d_model, num_heads)
+        self.cross_attention = mutihead_attention(d_model, num_heads)
         self.ffn_hidden = position_wise_feed_forward(d_model, dropout)
+        self.softmax = nn.Softmax(dim=-1)
         self.norm1 = nn.LayerNorm(d_model)
         self.norm2 = nn.LayerNorm(d_model)
         self.norm3 = nn.LayerNorm(d_model)
@@ -19,10 +21,18 @@ class decoder_layer(nn.Module):
 
     def forward(self, x, encoder_output, encoder_mask):
         temp_x = x
-        x = self.attention.forward(x, x, x)
+        x = self.self_attention.forward(x, x, x)
         x = self.dropout(x)
         x = self.norm1(temp_x + x)
         temp_x = x
-        
+        x = self.cross_attention.forward(query = x, key=encoder_output, value=encoder_output)
+        x = self.dropout(x)
+        x = self.norm2(temp_x + x)
+        temp_x = x
+        x = self.ffn_hidden.forward(x)
+        x = self.dropout(x)
+        x = self.norm3(temp_x + x)
+        x = self.softmax(x)
+        return x
 
         
