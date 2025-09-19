@@ -1,6 +1,7 @@
 import torch
 from torch import nn
 import math
+
 # 修正导入语句，使其与实际文件名匹配
 from head_attention import mutihead_attention
 from position_wise_feed_forwar import position_wise_feed_forward
