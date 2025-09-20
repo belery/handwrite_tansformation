@@ -23,7 +23,7 @@ class ClassificationDataset(Dataset):
         label = self.labels[idx]
         
         # 编码文本
-        text_encoded = self.tokenizer.encode(text)[:self.max_len]
+        text_encoded = self.tokenizer.tokenizer.encode(text)[:self.max_len]
         
         # 填充序列
         if len(text_encoded) < self.max_len:
@@ -70,16 +70,16 @@ def train_classification_model():
     max_len = 256
     dropout = 0.1
     batch_size = 32
-    learning_rate = 0.0001
-    num_epochs = 10
+    learning_rate = 0.001
+    num_epochs = 1
     
     # 初始化分词器
     chinese_tokenizer = ChineseTransformer(vocab_size, d_model, max_len, dropout)
     
     # 加载数据
-    train_texts, train_labels, label_map = load_classification_data('cnews/cnews.train.txt')
-    test_texts, test_labels, _ = load_classification_data('cnews/cnews.test.txt')
-    val_texts, val_labels, _ = load_classification_data('cnews/cnews.val.txt')
+    train_texts, train_labels, label_map = load_classification_data('../cnews/cnews.train.txt')
+    test_texts, test_labels, _ = load_classification_data('../cnews/cnews.test.txt')
+    val_texts, val_labels, _ = load_classification_data('../cnews/cnews.val.txt')
     
     # 训练分词器
     all_texts = train_texts + test_texts + val_texts
@@ -172,8 +172,14 @@ def train_classification_model():
             torch.save({
                 'model_state_dict': model.state_dict(),
                 'label_map': label_map,
-                'tokenizer': chinese_tokenizer,
-                'max_len': max_len
+                'vocab': chinese_tokenizer.tokenizer.vocab,
+                'max_len': max_len,
+                'vocab_size': vocab_size,
+                'd_model': d_model,
+                'num_heads': num_heads,
+                'num_layers': num_layers,
+                'num_classes': num_classes,
+                'dropout': dropout
             }, f'classification_model_epoch_{epoch+1}.pth')
     
     print("训练完成!")
@@ -200,13 +206,13 @@ def test_model(model, tokenizer, test_texts, test_labels, device, max_len, label
         true_label = test_labels[i]
         
         # 编码输入
-        text_encoded = tokenizer.encode(text)[:max_len]
+        text_encoded = tokenizer.tokenizer.encode(text)[:max_len]
         if len(text_encoded) < max_len:
             text_encoded = text_encoded + [tokenizer.tokenizer.vocab['<pad>']] * (max_len - len(text_encoded))
         else:
             text_encoded = text_encoded[:max_len]
         
-        input_tensor = torch.tensor(text_encoded).unsqueeze(0).to(device)
+        input_tensor = torch.tensor([text_encoded]).to(device)  # 使用 list 包裹以正确创建 batch 维度
         
         # 预测
         with torch.no_grad():
@@ -231,33 +237,44 @@ def test_model(model, tokenizer, test_texts, test_labels, device, max_len, label
 def predict_text(text, model_path='classification_model_epoch_10.pth'):
     """使用训练好的模型进行文本分类"""
     # 加载模型和配置
-    checkpoint = torch.load(model_path, map_location=torch.device('cpu'))
+    checkpoint = torch.load(model_path, map_location=torch.device('cpu'), weights_only=True)
     label_map = checkpoint['label_map']
-    tokenizer = checkpoint['tokenizer']
+    vocab = checkpoint['vocab']
     max_len = checkpoint['max_len']
+    vocab_size = checkpoint['vocab_size']
+    d_model = checkpoint['d_model']
+    num_heads = checkpoint['num_heads']
+    num_layers = checkpoint['num_layers']
+    num_classes = checkpoint['num_classes']
+    dropout = checkpoint['dropout']
+    
+    # 重新构建tokenizer
+    chinese_tokenizer = ChineseTransformer(vocab_size, d_model, max_len, dropout)
+    chinese_tokenizer.tokenizer.vocab = vocab
+    chinese_tokenizer.train_tokenizer([])  # 确保BPE模型已初始化，即使无新文本
     
     # 反转标签映射
     idx_to_label = {v: k for k, v in label_map.items()}
     
     # 初始化模型
     device = torch.device('cpu')
-    model = TextClassificationTransformer(
-        vocab_size=len(tokenizer.tokenizer.vocab),
-        d_model=512,
-        num_heads=8,
-        num_layers=6,
-        num_classes=len(label_map),
+    model = TaxtClassification(
+        vocab_size=vocab_size,
+        d_model=d_model,
+        num_heads=num_heads,
+        num_layers=num_layers,
+        num_classes=num_classes,
         max_len=max_len,
-        dropout=0.1,
+        dropout=dropout,
         device=device
     )
     model.load_state_dict(checkpoint['model_state_dict'])
     model.eval()
     
     # 编码输入文本
-    text_encoded = tokenizer.encode(text)[:max_len]
+    text_encoded = chinese_tokenizer.tokenizer.encode(text)[:max_len]
     if len(text_encoded) < max_len:
-        text_encoded = text_encoded + [tokenizer.tokenizer.vocab['<pad>']] * (max_len - len(text_encoded))
+        text_encoded = text_encoded + [chinese_tokenizer.tokenizer.vocab['<pad>']] * (max_len - len(text_encoded))
     else:
         text_encoded = text_encoded[:max_len]
     
